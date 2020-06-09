@@ -1,0 +1,198 @@
+---
+title: "White sox revenue"
+output:
+  pdf_document:
+    number_sections: yes
+---
+
+```{r, include=FALSE}
+
+library(knitr)                 
+library(tidyverse)             
+library(readxl)                
+library(psych)  
+library(plyr)
+library(dplyr)
+theme_set(theme_bw())          
+
+
+opts_chunk$set(echo=TRUE,      
+               warning=FALSE, 
+               message=FALSE,  
+               comment=NA)     
+```
+
+
+#Cleaning the data
+```{r}
+
+Buyer_Info_by_Game_2017_1st_half_v2 <- read_excel("~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer Info by Game- 2017 1st half v2.xlsx")
+Buyer_Info_by_Game_2017_2nd_half_v2 <- read_excel("~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer Info by Game- 2017 2nd half v2.xlsx")
+Buyer_Info_by_Game_2018_1st_half_v2 <- read_excel("~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer Info by Game- 2018 1st half v2.xlsx")
+Buyer_Info_by_Game_2018_2nd_half_v2 <- read_excel("~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer Info by Game- 2018 2nd half v2.xlsx")
+Buyer_Info_by_Game_2019_1st_half_v2 <- read_excel("~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer Info by Game- 2019 1st half v2.xlsx")
+Buyer_Info_by_Game_2019_2nd_half_v2 <- read_excel("~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer Info by Game- 2019 2nd half v2.xlsx")
+Buyer_Info_by_Game_2016_2nd_half_v2 <- read_excel("~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer Info by Game- 2016 2nd half v2.xlsx")
+Buyer_Info_by_Game_2016_1st_half_v2 <- read_excel("~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer Info by Game- 2016 1st half v2.xlsx")
+
+buyer_20161H <- Buyer_Info_by_Game_2016_1st_half_v2 #%>% filter (TicketingCategory=="Individual") %>% mutate(Year = "2016")
+buyer_20162H <- Buyer_Info_by_Game_2016_2nd_half_v2 #%>% filter (TicketingCategory=="Individual") %>% mutate(Year = "2016")
+
+buyer_20171H <- Buyer_Info_by_Game_2017_1st_half_v2 #%>% filter (TicketingCategory=="Individual") %>% mutate(Year = "2017")
+buyer_20172H <- Buyer_Info_by_Game_2017_2nd_half_v2 #%>% filter (TicketingCategory=="Individual") %>% mutate(Year = "2017")
+buyer_20181H <- Buyer_Info_by_Game_2018_1st_half_v2 #%>% filter (TicketingCategory=="Individual") %>% mutate(Year = "2018")
+buyer_20182H <- Buyer_Info_by_Game_2018_2nd_half_v2 #%>% filter (TicketingCategory=="Individual") %>% mutate(Year = "2018")
+buyer_20191H <- Buyer_Info_by_Game_2019_1st_half_v2 #%>% filter (TicketingCategory=="Individual") %>% mutate(Year = "2019")
+buyer_20192H <- Buyer_Info_by_Game_2019_2nd_half_v2 #%>% filter (TicketingCategory=="Individual") %>% mutate(Year = "2019")
+
+buyer_all <- rbind(buyer_20161H, buyer_20162H, buyer_20171H, buyer_20172H,buyer_20181H, buyer_20182H,buyer_20191H,buyer_20192H) %>% mutate(EventDate = str_remove(EventDate,"-"), EventDate =str_remove(EventDate,"-") )
+
+Buyer_Info_by_Game_2018_2nd_half_v2 %>%
+  summarize(revenue = sum(`Ticket Revenue`)) %>%
+  kable()
+
+```
+
+
+```{r}
+
+
+Buyer_data <- buyer_all %>% 
+  group_by(EventName,EventDate) %>%
+  summarize(Total_Revenue = sum(`Ticket Revenue`), TicketSold = sum(SumOfSold))
+
+Bleachers_data <- buyer_all %>% 
+  filter(RulePriceLevelDesc == "Bleachers") %>%
+  group_by(EventName,EventDate) %>%
+  summarize(Bleachers_Revenue = sum(`Ticket Revenue`), Bleachers_TicketSold = sum(SumOfSold)) 
+
+Buyer_data <- merge(Buyer_data, Bleachers_data) 
+Buyer_data <- Buyer_data[!duplicated(Buyer_data$EventDate),]
+
+Buyer_data$EventName1 <- NULL
+Buyer_data$Year1 <- NULL
+
+Buyer_data <- Buyer_data %>% mutate(average_price = Total_Revenue/TicketSold, bleachers_price = Bleachers_Revenue/Bleachers_TicketSold, bleachers_tick_perc = Bleachers_TicketSold/TicketSold, bleachers_rev_perc = Bleachers_Revenue/Total_Revenue )
+
+#write.csv(Buyer_data, "~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Buyer_data.csv")
+
+
+```
+
+
+```{r}
+FoodRetailDetail2018 <- read_csv("FoodRetailDetail2018.csv")
+FoodRetailDetail2017v2 <- read_csv("FoodRetailDetail2017v2.csv")
+FoodRetailDetail2019 <- read_csv("FoodRetailDetail2019.csv")
+
+White_Sox_Attendance_by_game_2016_2019 <- read_excel("White Sox Attendance by game 2016-2019.xlsx")
+B_B <- read_excel("B&B.xlsx")
+F4P <- read_excel("F4P.xlsx")
+
+Sales_2016 <- FoodRetailDetail2016v2 %>% 
+  filter(Source != "LevyQuest" ) %>%
+  group_by(DateKey) %>%
+  summarize(Sales = sum(SaleLineAmount))
+
+Sales_2017 <- FoodRetailDetail2017v2 %>% 
+  filter(Source != "LevyQuest" ) %>%
+  group_by(DateKey) %>%
+  summarize(Sales = sum(SaleLineAmount))
+
+Sales_2018 <- FoodRetailDetail2018 %>% 
+  filter(Source != "LevyQuest" ) %>%
+  group_by(DateKey) %>%
+  summarize(Sales = sum(SaleLineAmount))
+
+Sales_2019 <- FoodRetailDetail2019 %>% 
+  filter(Source != "LevyQuest" ) %>%
+  group_by(DateKey) %>%
+  summarize(Sales = sum(SaleLineAmount))
+
+sales_summary <- rbind(Sales_2016,Sales_2017,Sales_2018,Sales_2019)
+
+Game_Consession_sales <- merge(x = Buyer_data, y = sales_summary, by.x = "EventDate", by.y="DateKey", all.x=TRUE)
+
+Game_Consession_sales[is.na(Game_Consession_sales)] <- 0
+
+Consession1 <- Game_Consession_sales[-grep("20160523",Game_Consession_sales$EventDate),]
+Consession1 <- Consession1[-grep("20170527",Consession1$EventDate),]
+Consession1 <- Consession1[-grep("20170821",Consession1$EventDate),]
+#Consession1 <- Consession1[-grep("20180428",Consession1$EventDate),]
+Consession1 <- Consession1[-grep("20180615",Consession1$EventDate),]
+Consession1 <- Consession1[-grep("20180622",Consession1$EventDate),]
+#Consession1 <- Consession1[-grep("20180928",Consession1$EventDate),]
+Consession1 <- Consession1[-grep("20190501",Consession1$EventDate),]
+Consession1 <- Consession1[-grep("20190703",Consession1$EventDate),]
+#Consession1 <- Consession1[-grep("20190806",Consession1$EventDate),]
+Consession1 <- Consession1[-grep("20190813",Consession1$EventDate),]
+Consession1 <- Consession1[-grep("20190928",Consession1$EventDate),]
+
+
+Game_Consession_sales <-Consession1
+
+
+Game_Consession_sales <- merge(x = Game_Consession_sales, y = White_Sox_Attendance_by_game_2016_2019, by.x = "EventDate", by.y="EventDateKey", all.x=TRUE)
+
+Game_Consession_sales <- Game_Consession_sales %>% mutate(ARPU = Sales/TotalScans)
+
+Game_Consession_sales <- Game_Consession_sales %>% mutate(AttePerc = TotalScans/PaidIssued, TicketVali = TicketSold/PaidIssued, mergekey = paste(EventName.x, Season))
+
+
+
+
+Game_Consession_sales <- merge(x = Game_Consession_sales, y = B_B, by.x = "mergekey", by.y="BB_EventKey", all.x=TRUE)
+Game_Consession_sales <- merge(x = Game_Consession_sales, y = F4P, by.x = "mergekey", by.y="F4P_EventKey", all.x=TRUE)
+Game_Consession_sales[is.na(Game_Consession_sales)] <- 0
+
+Game_Consession_sales$BB[Game_Consession_sales$BB == "Yes"] <- "1"
+Game_Consession_sales$F4P[Game_Consession_sales$F4P == "Yes"] <- "1"
+
+Game_Consession_sales <- Game_Consession_sales %>%  mutate(D_BB = factor(BB), D_F4P = factor(F4P), PromoSold = BB_sold+F4P_sold, PromoPerc = PromoSold/PaidIssued)
+
+
+
+
+```
+
+
+
+```{r}
+
+
+Game_Consession_sales1$color[Game_Consession_sales1$BB == 0 & Game_Consession_sales1$F4P == 0] = "00"
+Game_Consession_sales1$color[Game_Consession_sales1$BB == 1 & Game_Consession_sales1$F4P == 0] = "01"
+Game_Consession_sales1$color[Game_Consession_sales1$BB == 0 & Game_Consession_sales1$F4P == 1] = "10"
+Game_Consession_sales1$color[Game_Consession_sales1$BB == 1 & Game_Consession_sales1$F4P == 1] = "11"
+
+
+Game_Consession_sales1 <- Game_Consession_sales %>% filter (ARPU > 10)
+
+Game_Consession_sales1$DayName <- ordered(Game_Consession_sales1$DayName, levels=c("Monday", "Tuesday", "Wednesday", "Thursday", 
+"Friday", "Saturday", "Sunday"))
+
+ggplot(Game_Consession_sales1, aes(x=DayName, y=ARPU, color = Game_Consession_sales1$color)) + geom_point() + 
+  geom_boxplot() +
+  facet_wrap(~Game_Consession_sales1$color )+
+  ylab("Per cap") +
+  xlab('Weekday') +
+  labs(color = "Promo Types") +
+  scale_color_discrete(breaks = c("00","01","10","11"),
+                       labels = c("No Promo", "B_B", "F4P","Both"))
+
+
+ggplot(Game_Consession_sales1, aes(x=TicketSold, y=ARPU, color = Game_Consession_sales1$color)) + 
+  geom_point() +
+  ylab("Per cap") +
+  labs(color = "Promo Types") +
+  facet_wrap(~Team) +
+  scale_color_discrete(breaks = c("00","01","10","11"),
+                       labels = c("No Promo", "B_B", "F4P","Both"))
+
+mean(Game_Consession_sales1$PromoPerc)
+
+write.csv(Game_Consession_sales1, "~/OneDrive - Northwestern University/2019 -3 Spring Quarter/MECN 615 Analytical Consulting Lab/White Sox/Buyer info/Consolidated_data.csv")
+
+```
+
+
